@@ -1,0 +1,82 @@
+Steps to Run the Web App and Model Query Analysis Components of the Project:
+
+Please follow the following instructions to run the web application along with the query attack detection mechanism:
+
+1.) Please change the 'oracle_path' in the main.py in '{your context path}\Attack Detection\src' to '{your context path}\Attack Detection\src\cifar_net.pt'
+2.) Please change the src directory path in attackDetectionTest.py to '{your context path}\Attack Detection\src'.
+3.) Please run 'pip install -r requirements.txt' in the '{your context path}\Attack Detection' directory.
+4.) Please run 'py main.py' in '{your context path}\Attack Detection\src'. -> The flask server for hosting our attack detection mechanism is now running. 
+5.) If you would like to test if our attack detection mechanism is working. Please run 'py attackDetectionTest.py' in '{your context path}\Attack Detection\src'. -> You can see a console log statement in the server terminal as "------------Found the attacker!------------" when an attack is detected (generally after 100 calls).
+6.) Please run 'npm install' at '{your context path}\Integration\Web Application\Front End'.
+7.) Please run 'npm run start' at '{your context path}\Integration\Web Application\Front End'. -> You should notice that the server is deployed and a tab in your default browser with the webpage is opened.
+8.) Please install Maven (https://maven.apache.org/install.html)
+9.) Please change 'queryModelPath' on line 30 to reflect the path of 'client.py' at '{your context path}\Attack Detection\src'.
+10.) Please run 'mvn clean install' at '{your context path}\Integration\Web Application\Back End' -> You can choose to skip this step.
+11.) Please run 'java -Xmx200m -jar "C:\Users\jashw\Desktop\Integration\Web Application\Back End\target\mlaas.demo-1.0-SNAPSHOT.jar"' at '{your context path}\Integration\Web Application\Back End'
+12.) Click on 'Change Image' in the web application and choose the image you would like to query to the system.
+13.) Click on 'Upload Image'. -> The confidence vector should be available below the button you clicked just now.
+
+Steps to Run the Model Extraction Component of the Project:
+
+1. Install the requirements.txt file.
+
+Using pip install -r requirements.txt
+
+
+Add the repo to the environment global variable using: export PYTHONPATH="${PYTHONPATH}: [LOCAL PATH]/knockoffnets"
+
+################################
+For training the models
+
+Format:
+$ python knockoff/victim/train.py DS_NAME ARCH OBFS_TCHQ OBFS_MAG -d DEV_ID -o models/victim/VIC_DIR -e epochs --log-interval
+
+Here DS_NAME= {cifar10, cubs200} ARCH = {alexnet, resnet34, vgg16, ..}, OBFS_TCHQ = {blur, noise}, OBFS_MAG = for blur use [1, 3, 5, 7, 9] for noise magnitude can be [0.1, 0.2, 0.3, 0.4, 0.5] 
+
+More Details
+
+python knockoff/victim/train.py --help
+
+
+For example to train the victim model on Alexent architecture using obfuscation technique noise and noise magnitude 0.3
+
+python knockoff/victim/train.py CIFAR10 alexnet noise 0.3 -d 0 -o models/victim/cifar10-alexnet-noise0.3 -e 50 --log-interval 25
+
+
+
+#################################
+For Creating Transfer Set:
+
+# Format:
+$ python knockoff/adversary/transfer.py STG models/victim/VIC_DIR --out_dir models/adversary/ADV_DIR --budget BUDGET --queryset QUERY_SET --img_obfs_tcq OBFS_TCQ --img_obfs_mag OBFS_MAG --batch_size 8 -d DEV_ID
+
+Here STG = {random , adaptive}, VIC_DIR is victim model directory, ADV_DIR is the adversary output directory, BUDGET is transfers size, QUERY_SET ={CIFAR100}, IMG_TCQ is {blur, noise}, OBFS_MAG = for blur use [1, 3, 5, 7, 9] for noise magnitude can be [0.1, 0.2, 0.3, 0.4, 0.5]
+
+More Detail:
+$ python knockoff/adversary/transfer.py --help
+
+Example:
+
+Generating transfer set of 50000 samples from CIFAR100 for training adversary model where the victim model was trained on obfuscation using blur with magnitude 1(i.e. 1x1 filter) using Adaptive and Random Strategy respectively.
+
+## Adaptive
+$ python knockoff/adversary/transfer.py adaptive models/victim/cifar10-alexnet-blur1 --out_dir models/adversary/cifar10-alexnet-adaptive-blur1-50000 --budget 50000 --queryset CIFAR100 --img_obfs_tcq blur --img_obfs_mag 1  --batch_size 8 -d 0
+
+## Random
+$ python knockoff/adversary/transfer.py random models/victim/cifar10-alexnet-blur1 --out_dir models/adversary/cifar10-alexnet-random-blur1-50000 --budget 50000 --queryset CIFAR100 --img_obfs_tcq blur --img_obfs_mag 1  --batch_size 8 -d 0
+
+
+##################################
+For Training the Adversary Model:
+
+# Format:
+$ python knockoff/adversary/train.py models/adversary/ADV_DIR ARCH DS_NAME --budgets BUDGET -d DEV_ID --pretrained --img_obfs_tcq OBFS_TCQ --img_obfs_mag OBFS_MAG --epochs EPOCHS --lr LR
+
+Here ADV_DIR is Adversary Directory ARCH is the architecture to train adversary, DS_NAME refers to the dataset used to train the Victim Model: Only used to get the test accuracy, BUDGET is the transfers size,  DEV_ID is specified which GPU to use, EPOCHS is epochs to train the model, OBFS_TCHQ & OBFS_MAG can use parameters as mentioned above. 
+
+More details:
+$ python knockoff/adversary/train.py --help
+
+Example:
+Training the Adversary Model on 50000 sample transfers size on resent34 architecture where the victim model is trained on obfuscation blur with magnitude 1.
+python knockoff/adversary/train.py models/adversary/cifar10-alexnet-random-blur1-50000 resnet34 CIFAR10 --budgets 50000 -d 0 --pretrained imagenet --img_obfs_tcq blur --img_obfs_mag 1 --log-interval 100 --epochs 50 --lr 0.01
